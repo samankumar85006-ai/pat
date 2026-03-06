@@ -1,87 +1,91 @@
-const express = require("express")
-const http = require("http")
-const socketio = require("socket.io")
-const cors = require("cors")
-const cookieParser = require("cookie-parser")
+const express = require("express");
+const http = require("http");
+const socketio = require("socket.io");
+const cors = require("cors");
+const cookieParser = require("cookie-parser");
 
-const auth = require("./authMiddleware")
-const aisensy = require("./aisensyService")
+const auth = require("./authMiddleware");
+const aisensy = require("./aisensyService");
 
-const app = express()
-const server = http.createServer(app)
-const io = socketio(server)
+const app = express();
+const server = http.createServer(app);
 
-app.use(cors())
-app.use(express.json())
-app.use(cookieParser())
-app.use(express.static("public"))
+const io = socketio(server, {
+  cors: {
+    origin: "*",
+  },
+});
 
-const PASSWORD="12345@Raju"
+app.use(cors());
+app.use(express.json());
+app.use(cookieParser());
+app.use(express.static("public"));
 
-let sockets=[]
+const PASSWORD = "12345@Raju";
 
-io.on("connection",(socket)=>{
+let sockets = [];
 
- sockets.push(socket)
+io.on("connection", (socket) => {
+  sockets.push(socket);
 
- socket.on("typing",(data)=>{
-  sockets.forEach(s=>s.emit("typing",data))
- })
+  console.log("Client connected");
 
-})
+  socket.on("typing", (data) => {
+    sockets.forEach((s) => s.emit("typing", data));
+  });
 
-app.post("/login",(req,res)=>{
+  socket.on("disconnect", () => {
+    sockets = sockets.filter((s) => s !== socket);
+    console.log("Client disconnected");
+  });
+});
 
- if(req.body.password === PASSWORD){
+app.post("/login", (req, res) => {
+  if (req.body.password === PASSWORD) {
+    res.cookie("auth", "ok", { maxAge: 86400000, httpOnly: true });
+    res.json({ success: true });
+  } else {
+    res.json({ success: false });
+  }
+});
 
-  res.cookie("auth","ok",{maxAge:86400000})
+app.get("/contacts", auth, async (req, res) => {
+  const data = await aisensy.getContacts();
+  res.json(data);
+});
 
-  res.json({success:true})
+app.get("/history/:phone", auth, async (req, res) => {
+  const data = await aisensy.getHistory(req.params.phone);
+  res.json(data);
+});
 
- }else{
-  res.json({success:false})
- }
+app.get("/templates", auth, async (req, res) => {
+  const data = await aisensy.getTemplates();
+  res.json(data);
+});
 
-})
+app.post("/send-text", auth, async (req, res) => {
+  await aisensy.sendText(req.body.phone, req.body.message);
+  res.json({ ok: true });
+});
 
-app.get("/contacts",auth,async(req,res)=>{
- const data = await aisensy.getContacts()
- res.json(data)
-})
+app.post("/send-template", auth, async (req, res) => {
+  await aisensy.sendTemplate(req.body.phone, req.body.template);
+  res.json({ ok: true });
+});
 
-app.get("/history/:phone",auth,async(req,res)=>{
- const data = await aisensy.getHistory(req.params.phone)
- res.json(data)
-})
+app.post("/send-media", auth, async (req, res) => {
+  await aisensy.sendMedia(req.body.phone, req.body.url, req.body.type);
+  res.json({ ok: true });
+});
 
-app.get("/templates",auth,async(req,res)=>{
- const data = await aisensy.getTemplates()
- res.json(data)
-})
+app.post("/webhook", (req, res) => {
+  sockets.forEach((s) => s.emit("message", req.body));
+  res.sendStatus(200);
+});
 
-app.post("/send-text",auth,async(req,res)=>{
- await aisensy.sendText(req.body.phone,req.body.message)
- res.json({ok:true})
-})
+const PORT = process.env.PORT || 3000;
 
-app.post("/send-template",auth,async(req,res)=>{
- await aisensy.sendTemplate(req.body.phone,req.body.template)
- res.json({ok:true})
-})
-
-app.post("/send-media",auth,async(req,res)=>{
- await aisensy.sendMedia(req.body.phone,req.body.url,req.body.type)
- res.json({ok:true})
-})
-
-app.post("/webhook",(req,res)=>{
-
- sockets.forEach(s=>s.emit("message",req.body))
-
- res.sendStatus(200)
-
-})
-
-server.listen(3000,()=>{
- console.log("Server running on port 3000")
-})
+server.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
