@@ -1,0 +1,56 @@
+
+<!DOCTYPE html>
+<html>
+
+<head>
+
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link rel="stylesheet" href="css/style.css">
+
+<script src="/socket.io/socket.io.js"></script>
+
+</head>
+
+<body>
+
+<div class="app">
+
+<div class="sidebar">
+
+<input id="search" placeholder="Search">
+
+<ul id="contacts"></ul>
+
+</div>
+
+<div class="chat">
+
+<div class="profile">
+<span id="number"></span>
+</div>
+
+<div id="messages"></div>
+
+<div id="typing"></div>
+
+<div class="send">
+
+<input id="msg">
+
+<input type="file" id="file">
+
+<button onclick="send()">Send</button>
+
+</div>
+
+</div>
+
+</div>
+
+<script src="js/socket.js"></script>
+<script src="js/templates.js"></script>
+<script src="js/app.js"></script>
+
+</body>
+</html>
